@@ -9,9 +9,9 @@ ARG REVISION
 # OCI Image metadata
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.authors="ChoreBoard Contributors" \
-      org.opencontainers.image.url="https://github.com/YOUR_USERNAME/ChoreBoard2" \
-      org.opencontainers.image.documentation="https://github.com/YOUR_USERNAME/ChoreBoard2/blob/main/README.md" \
-      org.opencontainers.image.source="https://github.com/YOUR_USERNAME/ChoreBoard2" \
+      org.opencontainers.image.url="https://github.com/PhunkMaster/ChoreBoard" \
+      org.opencontainers.image.documentation="https://github.com/PhunkMaster/ChoreBoard/blob/main/README.md" \
+      org.opencontainers.image.source="https://github.com/PhunkMaster/ChoreBoard" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.vendor="ChoreBoard" \

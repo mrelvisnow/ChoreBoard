@@ -156,8 +156,8 @@ jobs:
         id: tag
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}"
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "tag=${GITHUB_REF#refs/tags/v}"
+            echo "tag=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ github.ref_name }}"
             echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT

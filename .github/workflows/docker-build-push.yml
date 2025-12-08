@@ -131,7 +131,9 @@ jobs:
           context: .
           push: false
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels:
+            - ${{ steps.meta.outputs.labels }}
+            -
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -157,15 +159,17 @@ jobs:
         id: tag
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}"
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           else
+            echo "tag=${{ github.ref_name }}"
             echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+          image-ref: ${{ env.REGISTRY.lowercase }}/${{ env.IMAGE_NAME.lowercase }}:${{ steps.tag.outputs.tag }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'

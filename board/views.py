@@ -4,11 +4,12 @@ Views for ChoreBoard frontend.
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
 from decimal import Decimal
-from chores.models import ChoreInstance, Completion, CompletionShare, PointsLedger
+from chores.models import ChoreInstance, Completion, CompletionShare, PointsLedger, Chore
 from chores.services import AssignmentService, DependencyService
 from chores.arcade_service import ArcadeService
 from users.models import User
@@ -28,31 +29,55 @@ def main_board(request):
 
     # Get all active chore instances for today (excluding skipped)
     # Bug #6 Fix: Filter out instances of inactive chores
+    # Include: due today, overdue from past, OR no due date (sentinel date)
+    # Note: Use year > 3000 instead of >= 9999 to avoid overflow errors
+    # Note: Chores "for today" are created with due_at = start of tomorrow, so include tomorrow too
+    from datetime import datetime, timedelta
+    far_future = timezone.make_aware(datetime(3000, 1, 1))
+    tomorrow = today + timedelta(days=1)
+
     pool_chores = ChoreInstance.objects.filter(
         status=ChoreInstance.POOL,
-        due_at__date=today,
         chore__is_active=True
-    ).exclude(status=ChoreInstance.SKIPPED).select_related('chore').order_by('due_at')
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__date=tomorrow) |  # Due tomorrow (chores created "for today")
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date beyond year 3000)
+    ).select_related('chore').order_by('due_at')
 
+    # Get assigned chores: include chores due today, overdue, OR no due date
+    # Only include chores assigned to users who are eligible for points (to match what's displayed)
     assigned_chores = ChoreInstance.objects.filter(
         status=ChoreInstance.ASSIGNED,
-        due_at__date=today,
-        chore__is_active=True
-    ).exclude(status=ChoreInstance.SKIPPED).select_related('chore', 'assigned_to').order_by('due_at')
+        chore__is_active=True,
+        assigned_to__eligible_for_points=True,  # Only count chores for eligible users
+        assigned_to__isnull=False  # Exclude unassigned chores
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__date=tomorrow) |  # Due tomorrow (chores created "for today")
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date beyond year 3000)
+    ).select_related('chore', 'assigned_to').order_by('due_at')
 
     # Feature #8: Group assigned chores by user
     from collections import defaultdict
     chores_by_user = defaultdict(lambda: {'overdue': [], 'ontime': []})
 
+    # Also collect stats during iteration
+    overdue_assigned = []
+    ontime_assigned = []
+
     for chore in assigned_chores:
         user = chore.assigned_to
         if chore.is_overdue:
             chores_by_user[user]['overdue'].append(chore)
+            overdue_assigned.append(chore)
         else:
             chores_by_user[user]['ontime'].append(chore)
+            ontime_assigned.append(chore)
 
     # Convert to list of dicts for template
-    # Filter out users not eligible for points (and None users from unassigned chores)
     assigned_by_user = [
         {
             'user': user,
@@ -61,15 +86,13 @@ def main_board(request):
             'total': len(chores['overdue']) + len(chores['ontime'])
         }
         for user, chores in chores_by_user.items()
-        if user is not None and user.eligible_for_points
     ]
 
     # Sort by user name
     assigned_by_user.sort(key=lambda x: x['user'].first_name or x['user'].username)
 
-    # Keep original lists for backward compatibility with stats
-    overdue_assigned = assigned_chores.filter(is_overdue=True)
-    ontime_assigned = assigned_chores.filter(is_overdue=False)
+    # Calculate total assigned (for stat card)
+    total_assigned_count = len(overdue_assigned) + len(ontime_assigned)
 
     # Get all users for the user selector (only those eligible for points)
     users = User.objects.filter(
@@ -97,6 +120,7 @@ def main_board(request):
         'assigned_by_user': assigned_by_user,  # NEW: Grouped by user
         'overdue_assigned': overdue_assigned,  # For stats
         'ontime_assigned': ontime_assigned,    # For stats
+        'total_assigned_count': total_assigned_count,  # Total assigned (on-time + overdue)
         'users': users,
         'admin_users': admin_users,
         'today': today,
@@ -114,11 +138,20 @@ def pool_only(request):
     now = timezone.now()
     today = now.date()
 
+    # Use year > 3000 to avoid overflow errors with year >= 9999
+    from datetime import datetime, timedelta
+    far_future = timezone.make_aware(datetime(3000, 1, 1))
+    tomorrow = today + timedelta(days=1)
+
     pool_chores = ChoreInstance.objects.filter(
         status=ChoreInstance.POOL,
-        due_at__date=today,
         chore__is_active=True
-    ).exclude(status=ChoreInstance.SKIPPED).select_related('chore').order_by('due_at')
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__date=tomorrow) |  # Due tomorrow (chores created "for today")
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date beyond year 3000)
+    ).select_related('chore').order_by('due_at')
 
     # Get all users for the user selector (only those eligible for points)
     users = User.objects.filter(
@@ -144,12 +177,21 @@ def user_board(request, username):
     now = timezone.now()
     today = now.date()
 
-    # Get chores assigned to this user for today
+    # Use year > 3000 to avoid overflow errors with year >= 9999
+    from datetime import datetime, timedelta
+    far_future = timezone.make_aware(datetime(3000, 1, 1))
+    tomorrow = today + timedelta(days=1)
+
+    # Get chores assigned to this user: include chores due today, overdue, OR no due date
     assigned_chores = ChoreInstance.objects.filter(
         assigned_to=user,
-        due_at__date=today,
         status__in=[ChoreInstance.ASSIGNED, ChoreInstance.POOL],
         chore__is_active=True
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__date=tomorrow) |  # Due tomorrow (chores created "for today")
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date beyond year 3000)
     ).select_related('chore').order_by('due_at')
 
     # Separate overdue from on-time
@@ -196,18 +238,21 @@ def user_board_minimal(request, username):
     Kiosk-mode compatible: Uses username from URL, not logged-in user.
     """
     from chores.models import ArcadeSession
+    from datetime import timedelta
 
     # Get user from URL parameter (kiosk-mode compatible, no login required)
     user = get_object_or_404(User, username=username, is_active=True)
     now = timezone.now()
     today = now.date()
+    tomorrow = today + timedelta(days=1)
 
-    # Get chores assigned to this user for today
+    # Get chores assigned to this user: include chores due today OR overdue from previous days
     assigned_chores = ChoreInstance.objects.filter(
         assigned_to=user,
-        due_at__date=today,
         status__in=[ChoreInstance.ASSIGNED, ChoreInstance.POOL],
         chore__is_active=True
+    ).filter(
+        Q(due_at__date=today) | Q(due_at__date=tomorrow) | Q(due_at__lt=now)  # Due today/tomorrow OR past due
     ).select_related('chore').order_by('is_overdue', 'due_at')
 
     # Check for active arcade session for THIS user only (from URL username)
@@ -248,11 +293,20 @@ def pool_minimal(request):
     today = now.date()
 
     # Get all pool chores for today
+    # Use year > 3000 to avoid overflow errors with year >= 9999
+    from datetime import datetime, timedelta
+    far_future = timezone.make_aware(datetime(3000, 1, 1))
+    tomorrow = today + timedelta(days=1)
+
     pool_chores = ChoreInstance.objects.filter(
         status=ChoreInstance.POOL,
-        due_at__date=today,
         chore__is_active=True
-    ).exclude(status=ChoreInstance.SKIPPED).select_related('chore').order_by('due_at')
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__date=tomorrow) |  # Due tomorrow (chores created "for today")
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date beyond year 3000)
+    ).select_related('chore').order_by('due_at')
 
     # Check for any active arcade session (kiosk-mode compatible)
     active_arcade_session = ArcadeSession.objects.filter(
@@ -288,11 +342,20 @@ def assigned_minimal(request):
     now = timezone.now()
     today = now.date()
 
-    # Get all assigned chores for today
+    # Use year > 3000 to avoid overflow errors with year >= 9999
+    from datetime import datetime, timedelta
+    far_future = timezone.make_aware(datetime(3000, 1, 1))
+    tomorrow = today + timedelta(days=1)
+
+    # Get all assigned chores: include chores due today, overdue, OR no due date
     assigned_chores = ChoreInstance.objects.filter(
         status=ChoreInstance.ASSIGNED,
-        due_at__date=today,
         chore__is_active=True
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__date=tomorrow) |  # Due tomorrow (chores created "for today")
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date beyond year 3000)
     ).exclude(status=ChoreInstance.SKIPPED).select_related('chore', 'assigned_to').order_by('due_at')
 
     # Group assigned chores by user
@@ -350,9 +413,11 @@ def users_minimal(request):
     Kiosk-mode compatible.
     """
     from chores.models import ArcadeSession
+    from datetime import timedelta
 
     now = timezone.now()
     today = now.date()
+    tomorrow = today + timedelta(days=1)
 
     # Get all users eligible for points
     users = User.objects.filter(
@@ -361,11 +426,12 @@ def users_minimal(request):
         eligible_for_points=True
     ).order_by('first_name', 'username')
 
-    # Get chore counts per user for today
+    # Get chore counts per user: include chores due today OR overdue from previous days
     assigned_chores = ChoreInstance.objects.filter(
         status=ChoreInstance.ASSIGNED,
-        due_at__date=today,
         chore__is_active=True
+    ).filter(
+        Q(due_at__date=today) | Q(due_at__date=tomorrow) | Q(due_at__lt=now)  # Due today/tomorrow OR past due
     ).exclude(status=ChoreInstance.SKIPPED).select_related('assigned_to')
 
     # Count chores per user
@@ -483,6 +549,117 @@ def leaderboard_minimal(request):
     }
 
     return render(request, 'board/leaderboard_minimal.html', context)
+
+
+@login_required
+def quick_add_task(request):
+    """
+    Quick-add interface for creating one-time tasks.
+    Available to any logged-in user.
+    """
+    if request.method == 'GET':
+        # Get all users for assignment dropdown
+        users = User.objects.filter(
+            is_active=True,
+            can_be_assigned=True,
+            eligible_for_points=True
+        ).order_by('first_name', 'username')
+
+        return render(request, 'board/quick_add_task.html', {'users': users})
+
+    elif request.method == 'POST':
+        # Create one-time task
+        try:
+            name = request.POST.get('name', '').strip()
+            description = request.POST.get('description', '').strip()
+            points = request.POST.get('points', '10')
+            is_difficult = request.POST.get('is_difficult') == 'true'
+
+            # Security: Non-admin users can only create 0-point tasks to prevent abuse
+            if not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
+                points = Decimal('0.00')
+            else:
+                # Validate points for admin users
+                try:
+                    points = Decimal(points)
+                    if points < 0 or points > 999.99:
+                        return JsonResponse({'error': 'Points must be between 0 and 999.99'}, status=400)
+                except (ValueError, TypeError):
+                    return JsonResponse({'error': 'Invalid points value'}, status=400)
+
+            # Assignment
+            assignment_type = request.POST.get('assignment_type', 'pool')
+            assigned_to_id = request.POST.get('assigned_to')
+
+            # Due date (optional)
+            from datetime import datetime
+            due_date_str = request.POST.get('due_date', '').strip()
+            one_time_due_date = None
+            if due_date_str:
+                try:
+                    one_time_due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    return JsonResponse({'error': 'Invalid due date format'}, status=400)
+
+            # Validate
+            if not name:
+                return JsonResponse({'error': 'Name is required'}, status=400)
+
+            # Create chore
+            with transaction.atomic():
+                chore = Chore.objects.create(
+                    name=name,
+                    description=description,
+                    schedule_type=Chore.ONE_TIME,
+                    one_time_due_date=one_time_due_date,
+                    points=points,
+                    is_difficult=is_difficult,
+                    is_active=True,
+                    is_pool=(assignment_type == 'pool')
+                )
+
+                # If directly assigned, assign the instance
+                if assignment_type == 'assigned' and assigned_to_id:
+                    try:
+                        assigned_user = User.objects.get(id=assigned_to_id, is_active=True, can_be_assigned=True)
+                        instance = ChoreInstance.objects.filter(chore=chore).first()
+                        if instance:
+                            instance.status = ChoreInstance.ASSIGNED
+                            instance.assigned_to = assigned_user
+                            instance.assigned_at = timezone.now()
+                            instance.assignment_reason = ChoreInstance.REASON_FIXED
+                            instance.save(update_fields=['status', 'assigned_to', 'assigned_at', 'assignment_reason'])
+
+                            ActionLog.objects.create(
+                                action_type=ActionLog.ACTION_ADMIN,
+                                user=request.user if request.user.is_authenticated else assigned_user,
+                                description=f"Created and assigned one-time task: {chore.name} to {assigned_user.get_display_name()}",
+                                metadata={'chore_id': chore.id, 'instance_id': instance.id}
+                            )
+                    except User.DoesNotExist:
+                        return JsonResponse({'error': 'Invalid user selected for assignment'}, status=400)
+                else:
+                    # Log pool task creation
+                    ActionLog.objects.create(
+                        action_type=ActionLog.ACTION_ADMIN,
+                        user=request.user if request.user.is_authenticated else None,
+                        description=f"Created one-time task: {chore.name}",
+                        metadata={'chore_id': chore.id}
+                    )
+
+                logger.info(f"Created one-time task: {chore.name} (ID: {chore.id})")
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Task created successfully',
+                'chore_id': chore.id
+            })
+
+        except Exception as e:
+            logger.exception("Error creating quick-add task")
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
 
 
 @require_http_methods(["POST"])
@@ -884,19 +1061,22 @@ def get_updates(request):
             return JsonResponse({'error': 'Invalid timestamp format'}, status=400)
 
         # Get current time for response
+        from datetime import timedelta
         now = timezone.now()
         today = now.date()
+        tomorrow = today + timedelta(days=1)
 
         updates = {
             'timestamp': now.isoformat(),
             'changes': []
         }
 
-        # Get updated chore instances
+        # Get updated chore instances: include chores due today OR overdue from previous days
         updated_instances = ChoreInstance.objects.filter(
             updated_at__gt=since,
-            due_at__date=today,
             chore__is_active=True
+        ).filter(
+            Q(due_at__date=today) | Q(due_at__date=tomorrow) | Q(due_at__lt=now)  # Due today/tomorrow OR past due
         ).exclude(
             status=ChoreInstance.SKIPPED
         ).select_related('chore', 'assigned_to')

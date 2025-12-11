@@ -85,6 +85,7 @@
         </p>
 
         <form id="approveForm" method="post" action="">
+            {% csrf_token %}
             <div class="mb-4">
                 <label class="block text-gray-300 text-sm font-semibold mb-2">
                     Who is judging?
@@ -131,6 +132,7 @@
         </p>
 
         <form id="denyForm" method="post" action="">
+            {% csrf_token %}
             <div class="mb-4">
                 <label class="block text-gray-300 text-sm font-semibold mb-2">
                     Who is judging?

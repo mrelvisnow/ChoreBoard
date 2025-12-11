@@ -218,6 +218,9 @@
         try {
             const response = await fetch('{% url 'board:admin_settings' %}', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 

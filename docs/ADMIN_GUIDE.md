@@ -149,16 +149,135 @@ This preserves all historical data while removing them from active use.
 - Creates instance every N days from start
 - Example: "Water plants" (every 3 days)
 
-**Cron:**
-- Advanced scheduling using cron syntax
-- Full control over timing
-- Example: `0 0 * * 1,4` (Mondays and Thursdays at midnight)
+**CRON:**
+- Advanced scheduling using cron syntax (5-field format)
+- Full control over timing with minute, hour, day, month, weekday
+- **Format**: `minute hour day_of_month month day_of_week`
+- **Supports**:
+  - Wildcards (`*`): Any value
+  - Lists (`,`): Multiple values (e.g., `1,3,5`)
+  - Ranges (`-`): Range of values (e.g., `1-5`)
+  - Steps (`/`): Step values (e.g., `*/2` = every 2)
+  - **Nth occurrence (`#`)**: Specific week of month (e.g., `6#1` = first Saturday)
+
+**CRON Examples:**
+```
+0 0 * * *           # Daily at midnight
+0 0 * * 1-5         # Weekdays (Mon-Fri) at midnight
+0 0 1 * *           # First day of each month
+0 0 15 * *          # 15th of each month
+0 0 * * 0           # Sundays at midnight
+0 0 * * 1,3,5       # Monday, Wednesday, Friday
+0 0 1,15 * *        # 1st and 15th of each month
+0 0 */2 * *         # Every 2 days
+0 0 * * 6#1,6#3     # 1st and 3rd Saturday of each month
+0 0 * * 5#-1        # Last Friday of each month
+0 0 L * *           # Last day of each month
+```
+
+**CRON Weekday Reference:**
+- 0 or 7 = Sunday
+- 1 = Monday
+- 2 = Tuesday
+- 3 = Wednesday
+- 4 = Thursday
+- 5 = Friday
+- 6 = Saturday
 
 **RRULE:**
-- Visual editor for complex recurring patterns
+- Visual editor for complex recurring patterns (JSON format)
+- More human-readable than CRON for complex rules
 - Select frequency, interval, specific days
-- Human-readable preview generated
-- Example: "Every 2 weeks on Monday, Wednesday, Friday"
+- **Supported Parameters**:
+  - `freq`: DAILY, WEEKLY, MONTHLY, YEARLY (required)
+  - `interval`: How often to repeat (default: 1)
+  - `dtstart`: Start date (default: chore creation date)
+  - `until`: End date (optional)
+  - `count`: Number of occurrences (optional)
+  - `byweekday`: Specific weekdays [0-6] where 0=Monday (optional)
+  - `bymonthday`: Specific days of month (optional)
+  - `bymonth`: Specific months (optional)
+  - `bysetpos`: Nth occurrence (e.g., 1st, 3rd)
+
+**RRULE Examples:**
+```json
+{
+  "freq": "DAILY",
+  "interval": 1
+}
+// Daily
+
+{
+  "freq": "WEEKLY",
+  "interval": 1,
+  "byweekday": [0, 2, 4]
+}
+// Weekly on Monday, Wednesday, Friday
+
+{
+  "freq": "MONTHLY",
+  "interval": 1,
+  "bymonthday": [1, 15]
+}
+// 1st and 15th of each month
+
+{
+  "freq": "MONTHLY",
+  "byweekday": [5],
+  "bysetpos": [1, 3]
+}
+// 1st and 3rd Saturday of each month
+
+{
+  "freq": "WEEKLY",
+  "byweekday": [0, 1, 2, 3, 4]
+}
+// Weekdays only (Mon-Fri)
+
+{
+  "freq": "DAILY",
+  "interval": 2,
+  "dtstart": "2025-01-01"
+}
+// Every 2 days starting Jan 1, 2025
+
+{
+  "freq": "WEEKLY",
+  "interval": 2,
+  "byweekday": [0, 3]
+}
+// Every 2 weeks on Monday and Thursday
+
+{
+  "freq": "MONTHLY",
+  "byweekday": [5],
+  "bysetpos": [-1]
+}
+// Last Friday of each month
+```
+
+**RRULE Weekday Reference:**
+- 0 = Monday
+- 1 = Tuesday
+- 2 = Wednesday
+- 3 = Thursday
+- 4 = Friday
+- 5 = Saturday
+- 6 = Sunday
+
+**Choosing Between CRON and RRULE:**
+
+Use **CRON** when:
+- You're familiar with cron syntax
+- Need Nth weekday syntax (`6#1,6#3`)
+- Want compact, one-line expressions
+- Migrating from existing cron-based systems
+
+Use **RRULE** when:
+- You prefer JSON/structured format
+- Need complex recurring patterns
+- Want more readable configuration
+- Need features like `until` dates and occurrence counts
 
 ### Chore Rotation (Undesirable Flag)
 

@@ -26,6 +26,10 @@ class User(AbstractUser):
         default=True,
         help_text="Can this user be assigned chores? (Included in rotation/force-assignment pool)"
     )
+    exclude_from_auto_assignment = models.BooleanField(
+        default=False,
+        help_text="If True, user will NOT be auto-assigned chores at distribution time, but can still claim or be manually assigned"
+    )
     eligible_for_points = models.BooleanField(
         default=False,
         help_text="Can this user earn points and appear on leaderboard?"

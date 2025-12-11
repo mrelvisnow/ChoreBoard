@@ -187,11 +187,11 @@ class BackupUploadViewTest(TestCase):
         try:
             conn = sqlite3.connect(test_db)
             cursor = conn.cursor()
-            # Create required tables
-            cursor.execute('CREATE TABLE users_user (id INTEGER PRIMARY KEY)')
-            cursor.execute('CREATE TABLE chores_chore (id INTEGER PRIMARY KEY)')
-            cursor.execute('CREATE TABLE chores_choreinstance (id INTEGER PRIMARY KEY)')
-            cursor.execute('CREATE TABLE core_settings (id INTEGER PRIMARY KEY)')
+            # Create required tables (using actual table names from db_table in models)
+            cursor.execute('CREATE TABLE users (id INTEGER PRIMARY KEY)')
+            cursor.execute('CREATE TABLE chores (id INTEGER PRIMARY KEY)')
+            cursor.execute('CREATE TABLE chore_instances (id INTEGER PRIMARY KEY)')
+            cursor.execute('CREATE TABLE settings (id INTEGER PRIMARY KEY)')
             conn.commit()
             conn.close()
 
@@ -285,8 +285,8 @@ class BackupUploadViewTest(TestCase):
         try:
             conn = sqlite3.connect(test_db)
             cursor = conn.cursor()
-            # Create only some tables (missing required ones)
-            cursor.execute('CREATE TABLE users_user (id INTEGER PRIMARY KEY)')
+            # Create only some tables (missing required ones) - using correct table names
+            cursor.execute('CREATE TABLE users (id INTEGER PRIMARY KEY)')
             cursor.execute('CREATE TABLE random_table (id INTEGER PRIMARY KEY)')
             conn.commit()
             conn.close()
@@ -510,13 +510,13 @@ class BackupRestoreIntegrationTest(TestCase):
             test_db = f.name
 
         try:
-            # Create a valid ChoreBoard database
+            # Create a valid ChoreBoard database (using actual table names from db_table in models)
             conn = sqlite3.connect(test_db)
             cursor = conn.cursor()
-            cursor.execute('CREATE TABLE users_user (id INTEGER PRIMARY KEY)')
-            cursor.execute('CREATE TABLE chores_chore (id INTEGER PRIMARY KEY)')
-            cursor.execute('CREATE TABLE chores_choreinstance (id INTEGER PRIMARY KEY)')
-            cursor.execute('CREATE TABLE core_settings (id INTEGER PRIMARY KEY)')
+            cursor.execute('CREATE TABLE users (id INTEGER PRIMARY KEY)')
+            cursor.execute('CREATE TABLE chores (id INTEGER PRIMARY KEY)')
+            cursor.execute('CREATE TABLE chore_instances (id INTEGER PRIMARY KEY)')
+            cursor.execute('CREATE TABLE settings (id INTEGER PRIMARY KEY)')
             conn.commit()
             conn.close()
 

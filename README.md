@@ -37,6 +37,7 @@ ChoreBoard is a web-based chore management system designed to:
 📋 **Smart Scheduling**
 
 - Daily, weekly, every-N-days, or custom (cron/RRULE) schedules
+- One-time tasks for non-recurring work
 - Automatic chore creation and assignment
 - Fair rotation for undesirable tasks
 
@@ -136,6 +137,10 @@ Complete guides for using and managing ChoreBoard:
     - Weekly reset and points conversion
     - System settings and customization
     - Notifications and webhooks
+- **[Schedule Reference](docs/SCHEDULE_REFERENCE.md)** - Quick reference for CRON and RRULE schedules
+    - CRON syntax and examples
+    - RRULE JSON format and examples
+    - Common patterns and troubleshooting
 
 ### 🐳 Deployment & Advanced
 

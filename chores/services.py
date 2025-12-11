@@ -119,7 +119,8 @@ class AssignmentService:
         # Start with users who can be assigned
         eligible = User.objects.filter(
             can_be_assigned=True,
-            is_active=True
+            is_active=True,
+            exclude_from_auto_assignment=False  # Exclude users who opt out of auto-assignment
         )
 
         # If chore is undesirable, filter by explicit eligibility
@@ -476,23 +477,28 @@ class SkipService:
             if timezone.now() - instance.skipped_at > time_limit:
                 return False, f"Cannot unskip after {undo_limit_hours} hours", None
 
-            # Check if chore is past due - if so, restore to overdue pool
+            # Restore to appropriate state based on chore type and assignment
             now = timezone.now()
-            if now > instance.due_at:
-                # Restore to pool but mark as overdue
+            is_overdue = now > instance.due_at
+
+            # Determine restore state based on chore's is_pool setting and assignment
+            if instance.chore.is_pool or not instance.assigned_to:
+                # Pool chores or unassigned chores go back to pool
                 instance.status = ChoreInstance.POOL
                 instance.assigned_to = None
-                instance.is_overdue = True
-                restored_state = "pool (overdue)"
-            else:
-                # Check if it was originally assigned
-                # Since we don't store previous state, check assigned_to field
-                if instance.assigned_to:
-                    instance.status = ChoreInstance.ASSIGNED
-                    restored_state = f"assigned to {instance.assigned_to.username}"
+                instance.is_overdue = is_overdue
+                if is_overdue:
+                    restored_state = "pool (overdue)"
                 else:
-                    instance.status = ChoreInstance.POOL
                     restored_state = "pool"
+            else:
+                # Assigned chores (is_pool=False) stay assigned to original user
+                instance.status = ChoreInstance.ASSIGNED
+                instance.is_overdue = is_overdue
+                if is_overdue:
+                    restored_state = f"assigned to {instance.assigned_to.username} (overdue)"
+                else:
+                    restored_state = f"assigned to {instance.assigned_to.username}"
 
             # Clear skip tracking fields
             instance.skip_reason = None

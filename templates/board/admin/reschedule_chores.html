@@ -209,6 +209,9 @@
 
             const response = await fetch(`/admin-panel/chore/reschedule/${currentChoreId}/`, {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -233,7 +236,10 @@
 
         try {
             const response = await fetch(`/admin-panel/chore/clear-reschedule/${choreId}/`, {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
             });
 
             const data = await response.json();

@@ -399,9 +399,10 @@ def continue_after_denial(request, session_id):
 
 def arcade_leaderboard(request):
     """Public arcade leaderboard page (kiosk mode compatible)."""
-    # Get all chores with high scores
+    # Get all active chores with high scores
     chores_with_scores = Chore.objects.filter(
-        high_scores__isnull=False
+        high_scores__isnull=False,
+        is_active=True
     ).distinct().order_by('name')
 
     leaderboard_data = []
@@ -456,9 +457,10 @@ def arcade_leaderboard(request):
 
 def arcade_leaderboard_minimal(request):
     """Minimal arcade leaderboard page (kiosk mode compatible)."""
-    # Get all chores with high scores
+    # Get all active chores with high scores
     chores_with_scores = Chore.objects.filter(
-        high_scores__isnull=False
+        high_scores__isnull=False,
+        is_active=True
     ).distinct().order_by('name')
 
     leaderboard_data = []
@@ -485,20 +487,23 @@ def user_profile(request, username):
     # Get overall stats
     stats = ArcadeService.get_user_stats(user)
 
-    # Get personal bests (high scores this user holds)
+    # Get personal bests (high scores this user holds) - only for active chores
     personal_bests = ArcadeHighScore.objects.filter(
-        user=user
+        user=user,
+        chore__is_active=True
     ).select_related('chore', 'arcade_completion').order_by('rank', 'chore__name')
 
-    # Get recent arcade history
+    # Get recent arcade history - only for active chores
     recent_completions = ArcadeCompletion.objects.filter(
-        user=user
+        user=user,
+        chore__is_active=True
     ).select_related('chore').order_by('-completed_at')[:10]
 
-    # Get recent denials
+    # Get recent denials - only for active chores
     recent_denials = ArcadeSession.objects.filter(
         user=user,
-        status=ArcadeSession.STATUS_DENIED
+        status=ArcadeSession.STATUS_DENIED,
+        chore__is_active=True
     ).select_related('chore').order_by('-updated_at')[:5]
 
     context = {

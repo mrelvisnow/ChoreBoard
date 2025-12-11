@@ -6,3 +6,4 @@
 - Always keep tests up to date
 - Always maintain a good code coverage level
 - When the user identifies a problem, always write a comprehensive test to ensure that it does not resurface
+- Always ask questions if an instruction is unclear or ambiguous

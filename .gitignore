@@ -1,1 +1,40 @@
-/db.sqlite3
+**/__pycache__/**
+data/backups/**
+.idea
+.venv
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+/staticfiles/
+/media/
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+# OS
+.DS_Store
+Thumbs.db
+# Environment files
+.env
+.env.local
+# Documentation
+*.md
+docs/
+# Test files
+test_*.py
+tests/

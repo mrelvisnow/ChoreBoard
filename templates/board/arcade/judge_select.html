@@ -51,6 +51,7 @@
         </p>
 
         <form method="post" action="{% url 'board:arcade_submit_approval' arcade_session.id %}">
+            {% csrf_token %}
 
             <div class="space-y-3 mb-6">
                 {% for judge in available_judges %}

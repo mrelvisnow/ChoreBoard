@@ -29,7 +29,8 @@ class InactiveChoreInstanceTest(TestCase):
             username='user1',
             email='user1@test.com',
             password='testpass123',
-            can_be_assigned=True
+            can_be_assigned=True,
+            eligible_for_points=True
         )
 
         # Create test client

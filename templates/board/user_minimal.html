@@ -247,6 +247,9 @@ async function submitComplete() {
     try {
         const response = await fetch('{% url "board:complete_action" %}', {
             method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
             body: formData
         });
 
@@ -272,6 +275,9 @@ async function submitUnclaim() {
     try {
         const response = await fetch('{% url "board:unclaim_action" %}', {
             method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
             body: formData
         });
 
@@ -362,6 +368,9 @@ async function startArcade(instanceId, userId) {
 
         const response = await fetch('/action/arcade/start/', {
             method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
             body: formData
         });
 
@@ -388,6 +397,9 @@ async function stopArcade(sessionId) {
 
         const response = await fetch('/action/arcade/stop/', {
             method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
             body: formData
         });
 
@@ -424,6 +436,9 @@ async function cancelArcade(sessionId) {
 
         const response = await fetch('/action/arcade/cancel/', {
             method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
             body: formData
         });
 

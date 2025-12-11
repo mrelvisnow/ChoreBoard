@@ -222,7 +222,11 @@
     async function executeConvert() {
         try {
             const response = await fetch('/weekly-reset/convert/', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'Content-Type': 'application/json'
+                }
             });
 
             const data = await response.json();
@@ -251,7 +255,11 @@
     async function executeUndo() {
         try {
             const response = await fetch('/weekly-reset/undo/', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'Content-Type': 'application/json'
+                }
             });
 
             const data = await response.json();

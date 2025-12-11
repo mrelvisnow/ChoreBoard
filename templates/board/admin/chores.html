@@ -248,6 +248,7 @@
                     <option value="every_n_days">Every N Days</option>
                     <option value="cron">Cron Expression</option>
                     <option value="rrule">RRULE (Advanced)</option>
+                    <option value="one_time">One-Time Task</option>
                 </select>
             </div>
 
@@ -424,6 +425,14 @@
                 </details>
             </div>
 
+            <!-- One-Time: Due Date -->
+            <div id="one-time-container" class="hidden">
+                <label for="chore-one-time-due-date" class="block text-gray-300 mb-2 font-medium">Due Date (Optional)</label>
+                <input type="date" id="chore-one-time-due-date" name="one_time_due_date"
+                       class="w-full bg-dark-card text-gray-100 border border-dark-border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                <p class="text-gray-500 text-sm mt-1">Leave empty if task should never become overdue</p>
+            </div>
+
             <!-- Dependencies -->
             <div>
                 <label for="chore-dependencies" class="block text-gray-300 mb-2 font-medium">Parent Chore (Dependency)</label>
@@ -575,6 +584,9 @@ async function loadTemplate(templateId) {
             if (data.rrule_json) {
                 document.getElementById('chore-rrule-json').value = data.rrule_json;
             }
+            if (data.one_time_due_date) {
+                document.getElementById('chore-one-time-due-date').value = data.one_time_due_date;
+            }
 
             showToast('Template loaded successfully! Please enter a unique chore name.', 'success');
 
@@ -620,6 +632,9 @@ async function saveAsTemplate() {
     try {
         const response = await fetch('/admin-panel/template/save/', {
             method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
             body: formData
         });
 
@@ -690,6 +705,10 @@ async function editChore(choreId) {
                 document.getElementById('chore-rrule').value = data.rrule_json;
                 // Parse and populate RRULE visual editor
                 loadRRuleFromJSON(data.rrule_json);
+            }
+
+            if (data.one_time_due_date) {
+                document.getElementById('chore-one-time-due-date').value = data.one_time_due_date;
             }
 
             // Populate dependencies dropdown
@@ -791,6 +810,7 @@ function updateScheduleFields() {
     document.getElementById('every-n-container').classList.add('hidden');
     document.getElementById('cron-container').classList.add('hidden');
     document.getElementById('rrule-container').classList.add('hidden');
+    document.getElementById('one-time-container').classList.add('hidden');
 
     // Remove all required attributes
     document.getElementById('chore-weekday').removeAttribute('required');
@@ -815,6 +835,9 @@ function updateScheduleFields() {
         document.getElementById('chore-rrule').setAttribute('required', 'required');
         updateRRuleFields();
         updateRRulePreview();
+    } else if (scheduleType === 'one_time') {
+        document.getElementById('one-time-container').classList.remove('hidden');
+        // one_time_due_date is optional, no required attribute needed
     }
 }
 
@@ -1077,7 +1100,10 @@ async function toggleChoreActive(choreId) {
 
     try {
         const response = await fetch(`/admin-panel/chore/toggle/${choreId}/`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
         });
         const data = await response.json();
 
@@ -1135,6 +1161,9 @@ document.getElementById('chore-form').addEventListener('submit', async function(
 
         const response = await fetch(url, {
             method: method,
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
             body: formData
         });
         const data = await response.json();

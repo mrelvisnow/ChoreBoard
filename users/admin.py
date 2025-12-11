@@ -14,6 +14,7 @@ class UserAdmin(BaseUserAdmin):
         "get_display_name",
         "email",
         "can_be_assigned",
+        "exclude_from_auto_assignment",
         "eligible_for_points",
         "weekly_points",
         "all_time_points",
@@ -27,6 +28,7 @@ class UserAdmin(BaseUserAdmin):
         "is_staff",
         "is_superuser",
         "can_be_assigned",
+        "exclude_from_auto_assignment",
         "eligible_for_points",
     ]
 
@@ -38,6 +40,7 @@ class UserAdmin(BaseUserAdmin):
         ("ChoreBoard Settings", {
             "fields": (
                 "can_be_assigned",
+                "exclude_from_auto_assignment",
                 "eligible_for_points",
             )
         }),
@@ -62,6 +65,7 @@ class UserAdmin(BaseUserAdmin):
         ("ChoreBoard Settings", {
             "fields": (
                 "can_be_assigned",
+                "exclude_from_auto_assignment",
                 "eligible_for_points",
             )
         }),

@@ -227,8 +227,8 @@ class SplitAssignedChoresTest(TestCase):
                      "ontime_assigned should exist for stats")
 
         # Check counts match total chores
-        overdue_count = response.context['overdue_assigned'].count()
-        ontime_count = response.context['ontime_assigned'].count()
+        overdue_count = len(response.context['overdue_assigned'])
+        ontime_count = len(response.context['ontime_assigned'])
 
         assigned_by_user = response.context['assigned_by_user']
         total_from_grouped = sum(u['total'] for u in assigned_by_user)

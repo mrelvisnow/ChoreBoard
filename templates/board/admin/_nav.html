@@ -1,52 +1,52 @@
 <!-- Admin Navigation -->
 <div class="bg-dark-surface rounded-lg p-4 border border-dark-border">
-    <nav class="flex space-x-2 overflow-x-auto">
+    <nav class="flex justify-center items-center space-x-2 overflow-x-auto">
         <a href="{% url 'board:admin_dashboard' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'dashboard' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'dashboard' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Dashboard
         </a>
         <a href="{% url 'board:admin_chores' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'chores' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'chores' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Chores
         </a>
         <a href="{% url 'board:admin_users' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'users' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'users' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Users
         </a>
         <a href="{% url 'board:admin_settings' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'settings' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'settings' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Settings
         </a>
         <a href="{% url 'board:admin_skip_chores' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'skip_chores' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'skip_chores' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Skip Chores
         </a>
         <a href="{% url 'board:admin_reschedule_chores' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'reschedule_chores' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'reschedule_chores' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Reschedule
         </a>
         <a href="{% url 'board:admin_force_assign' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'force_assign' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'force_assign' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Force Assign
         </a>
         <a href="{% url 'board:admin_streaks' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'streaks' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'streaks' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Streaks
         </a>
         <a href="{% url 'board:admin_adjust_points' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'adjust_points' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'adjust_points' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Adjust Points
         </a>
         <a href="{% url 'board:admin_undo_completions' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'undo_completions' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'undo_completions' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Undo Completions
         </a>
         <a href="{% url 'board:admin_backups' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'backups' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'backups' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Backups
         </a>
         <a href="{% url 'board:admin_logs' %}"
-           class="px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'logs' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
+           class="flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium {% if active_page == 'logs' %}bg-primary-500 text-white{% else %}text-gray-300 hover:bg-dark-card transition{% endif %}">
             Action Logs
         </a>
     </nav>

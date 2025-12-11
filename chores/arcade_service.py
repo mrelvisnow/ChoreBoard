@@ -162,8 +162,7 @@ class ArcadeService:
         # Award points to user
         arcade_completion.refresh_from_db()  # Get updated bonus_points
         user = arcade_session.user
-        user.weekly_points += arcade_completion.total_points
-        user.all_time_points += arcade_completion.total_points
+        user.add_points(arcade_completion.total_points, weekly=True, all_time=True)
         user.save()
 
         # Create points ledger entry
@@ -178,8 +177,9 @@ class ArcadeService:
 
         # Mark chore instance as completed
         chore_instance = arcade_session.chore_instance
+        completion_time = timezone.now()
         chore_instance.status = ChoreInstance.COMPLETED
-        chore_instance.completed_at = timezone.now()
+        chore_instance.completed_at = completion_time
         chore_instance.save()
 
         # Create standard Completion record (for compatibility with existing system)
@@ -188,6 +188,13 @@ class ArcadeService:
             completed_by=user,
             was_late=chore_instance.is_overdue
         )
+
+        # Spawn dependent chores (if any)
+        from chores.services import DependencyService, AssignmentService
+        spawned_children = DependencyService.spawn_dependent_chores(chore_instance, completion_time)
+
+        # Update rotation state for undesirable chores
+        AssignmentService.update_rotation_state(arcade_session.chore, user)
 
         # Create completion share (no helpers in arcade mode)
         CompletionShare.objects.create(
@@ -209,6 +216,7 @@ class ArcadeService:
                 'points': str(arcade_completion.total_points),
                 'is_high_score': arcade_completion.is_high_score,
                 'rank': arcade_completion.rank_at_completion,
+                'spawned_children': len(spawned_children),
             }
         )
 

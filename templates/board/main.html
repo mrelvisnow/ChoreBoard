@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load chore_filters %}
 
 {% block title %}ChoreBoard - Main Board{% endblock %}
 
@@ -11,8 +12,17 @@
             <p class="text-gray-400 mt-1">{{ now|date:"l, F j, Y g:i A" }}</p>
         </div>
 
-        <!-- User Selector Dropdown -->
+        <!-- User Selector Dropdown and Quick Add Button -->
         <div class="flex items-center space-x-4">
+            <!-- Quick Add Task Button -->
+            <a href="{% url 'board:quick_add_task' %}"
+               class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Quick Add Task
+            </a>
+
             <label for="user-selector" class="text-gray-300">View by user:</label>
             <select id="user-selector"
                     class="bg-dark-surface text-gray-100 border border-dark-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -102,7 +112,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-400 text-sm">Assigned</p>
-                    <p class="text-3xl font-bold text-amber-400">{{ ontime_assigned|length }}</p>
+                    <p class="text-3xl font-bold text-amber-400">{{ total_assigned_count }}</p>
                 </div>
                 <div class="bg-amber-500/20 rounded-full p-3">
                     <svg class="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,7 +160,11 @@
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
+                        {% if instance.due_at|is_sentinel_date %}
+                        Due: {{ instance.due_at|format_due_date }}
+                        {% else %}
                         Due: {{ instance.due_at|date:"M j, Y g:i A" }}
+                        {% endif %}
                     </div>
                     <div class="text-primary-400 font-bold">
                         {{ instance.points_value }} {{ POINTS_LABEL_SHORT }}
@@ -283,7 +297,11 @@
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
+                            {% if instance.due_at|is_sentinel_date %}
+                            Due: {{ instance.due_at|format_due_date }}
+                            {% else %}
                             Was due: {{ instance.due_at|date:"g:i A" }}
+                            {% endif %}
                         </div>
                         <div class="text-primary-400 font-bold">
                             {{ instance.points_value }} {{ POINTS_LABEL_SHORT }}
@@ -391,7 +409,11 @@
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
+                            {% if instance.due_at|is_sentinel_date %}
+                            Due: {{ instance.due_at|format_due_date }}
+                            {% else %}
                             Due: {{ instance.due_at|date:"M j, Y g:i A" }}
+                            {% endif %}
                         </div>
                         <div class="text-primary-400 font-bold">
                             {{ instance.points_value }} {{ POINTS_LABEL_SHORT }}
@@ -827,6 +849,9 @@
 
             const response = await fetch('/action/claim/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -868,6 +893,9 @@
 
             const response = await fetch('/action/complete/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -914,6 +942,9 @@
 
             const response = await fetch('/action/unclaim/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -977,6 +1008,9 @@
 
             const response = await fetch('/action/skip/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -1049,6 +1083,9 @@
 
             const response = await fetch('/action/reschedule/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -1139,6 +1176,9 @@
 
             const response = await fetch('/action/arcade/start/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -1165,6 +1205,9 @@
 
             const response = await fetch('/action/arcade/stop/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -1201,6 +1244,9 @@
 
             const response = await fetch('/action/arcade/cancel/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 

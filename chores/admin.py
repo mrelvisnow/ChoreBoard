@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import (
     Chore, ChoreEligibility, ChoreDependency, ChoreInstance,
-    Completion, CompletionShare, PointsLedger
+    Completion, CompletionShare, PointsLedger, PianoScore
 )
 
 
@@ -113,6 +113,12 @@ class ChoreAdmin(admin.ModelAdmin):
             for dep in parents:
                 html.append(f"<li>{dep.depends_on.name} (offset: {dep.offset_hours}h)</li>")
             html.append("</ul>")
+
+            # Warning if child chore has its own schedule
+            html.append('<div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin-top: 10px; border-radius: 4px;">')
+            html.append('<strong>⚠️ Note:</strong> This is a child chore - it will ONLY spawn when its parent chore(s) are completed. ')
+            html.append('The schedule settings above are ignored for child chores.')
+            html.append('</div>')
 
         # Child dependencies
         children = obj.dependencies_as_parent.all()
@@ -609,3 +615,13 @@ class PointsLedgerAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Ledger entries are immutable and cannot be deleted."""
         return False
+
+
+@admin.register(PianoScore)
+class PianoScoreAdmin(admin.ModelAdmin):
+    """Admin interface for PianoScore model."""
+    list_display = ('user', 'score', 'hard_mode', 'achieved_at')
+    list_filter = ('hard_mode', 'achieved_at')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name')
+    readonly_fields = ('achieved_at',)
+    date_hierarchy = 'achieved_at'

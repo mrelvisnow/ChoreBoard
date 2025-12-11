@@ -117,10 +117,49 @@ class RestoreQueue:
                 except Exception as e:
                     logger.warning(f"Could not create safety backup: {str(e)}")
 
-            # Replace database file
+            # Close all database connections before replacing file
+            from django.db import connections
+            logger.info("Closing all database connections...")
+            for conn in connections.all():
+                conn.close()
+
+            # Replace database file using atomic operation
             import shutil
+            import tempfile
+            import sqlite3
+
             logger.info(f"Replacing database: {db_path}")
-            shutil.copy2(backup_filepath, db_path)
+
+            # Create temp file in same directory to ensure same filesystem
+            db_dir = os.path.dirname(db_path)
+            temp_fd, temp_path = tempfile.mkstemp(suffix='.sqlite3', dir=db_dir)
+            os.close(temp_fd)
+
+            try:
+                # Copy to temp file first
+                shutil.copy2(backup_filepath, temp_path)
+
+                # Verify integrity of copied file
+                logger.info("Verifying copied database integrity...")
+                conn = sqlite3.connect(temp_path)
+                cursor = conn.cursor()
+                cursor.execute('PRAGMA integrity_check')
+                integrity_result = cursor.fetchone()[0]
+                conn.close()
+
+                if integrity_result != 'ok':
+                    os.remove(temp_path)
+                    RestoreQueue.clear_queue()
+                    return False, f"Copied database failed integrity check: {integrity_result}"
+
+                # Atomic replace (on same filesystem)
+                os.replace(temp_path, db_path)
+
+            except Exception as e:
+                # Clean up temp file on error
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                raise e
 
             # Clear queue
             RestoreQueue.clear_queue()

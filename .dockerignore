@@ -50,3 +50,4 @@ docs/
 # Test files
 test_*.py
 tests/
+/data/db.sqlite3

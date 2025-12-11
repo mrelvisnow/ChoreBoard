@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import transaction
 from django.utils import timezone
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.conf import settings
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
@@ -33,21 +33,63 @@ def admin_dashboard(request):
     """
     Admin dashboard showing key metrics and recent activity.
     """
+    from datetime import datetime
+    from django.db.models import Q
+
     now = timezone.now()
     today = now.date()
+
+    # Use year > 3000 to avoid overflow errors with year >= 9999
+    far_future = timezone.make_aware(datetime(3000, 1, 1))
 
     # Key metrics
     active_chores = Chore.objects.filter(is_active=True).count()
     active_users = User.objects.filter(is_active=True, eligible_for_points=True).count()
 
-    # Today's chore instances (excluding skipped)
-    todays_instances = ChoreInstance.objects.filter(due_at__date=today).exclude(status=ChoreInstance.SKIPPED)
-    pool_count = todays_instances.filter(status=ChoreInstance.POOL).count()
-    assigned_count = todays_instances.filter(status=ChoreInstance.ASSIGNED).count()
-    completed_count = todays_instances.filter(status=ChoreInstance.COMPLETED).count()
-    overdue_count = todays_instances.filter(status=ChoreInstance.ASSIGNED, is_overdue=True).count()
+    # Chore instance counts (matching main page logic: today + overdue + no due date)
+    # Pool chores (any user)
+    pool_count = ChoreInstance.objects.filter(
+        status=ChoreInstance.POOL,
+        chore__is_active=True
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date)
+    ).count()
 
-    # Skipped chores count (for today)
+    # Assigned chores (eligible users only, matching main page)
+    assigned_count = ChoreInstance.objects.filter(
+        status=ChoreInstance.ASSIGNED,
+        chore__is_active=True,
+        assigned_to__eligible_for_points=True,  # Only count eligible users
+        assigned_to__isnull=False
+    ).filter(
+        Q(due_at__date=today) |  # Due today
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (sentinel date)
+    ).count()
+
+    # Completed chores (today only is fine)
+    completed_count = ChoreInstance.objects.filter(
+        status=ChoreInstance.COMPLETED,
+        chore__is_active=True,
+        due_at__date=today
+    ).count()
+
+    # Overdue chores (eligible users only)
+    overdue_count = ChoreInstance.objects.filter(
+        status=ChoreInstance.ASSIGNED,
+        chore__is_active=True,
+        assigned_to__eligible_for_points=True,
+        assigned_to__isnull=False,
+        is_overdue=True
+    ).filter(
+        Q(due_at__date=today) |  # Due today but overdue
+        Q(due_at__lt=now) |  # Overdue from previous days
+        Q(due_at__gte=far_future)  # No due date (can't be overdue but include for consistency)
+    ).count()
+
+    # Skipped chores count (today only is fine)
     skipped_count = ChoreInstance.objects.filter(due_at__date=today, status=ChoreInstance.SKIPPED).count()
 
     # Points this week
@@ -416,6 +458,7 @@ def admin_chore_get(request, chore_id):
             'every_n_start_date': chore.every_n_start_date.isoformat() if chore.every_n_start_date else None,
             'cron_expr': chore.cron_expr or '',
             'rrule_json': chore.rrule_json or '',
+            'one_time_due_date': chore.one_time_due_date.isoformat() if chore.one_time_due_date else '',
             'depends_on': depends_on_id,
             'offset_hours': offset_hours,
             'is_active': chore.is_active,
@@ -461,6 +504,7 @@ def admin_chore_create(request):
         every_n_start_date = request.POST.get('every_n_start_date')
         cron_expr = request.POST.get('cron_expr', '').strip()
         rrule_json_str = request.POST.get('rrule_json', '').strip()
+        one_time_due_date = request.POST.get('one_time_due_date', '').strip()
 
         # Dependency fields
         depends_on_id = request.POST.get('depends_on')
@@ -504,6 +548,7 @@ def admin_chore_create(request):
                 every_n_start_date=every_n_start_date if every_n_start_date else None,
                 cron_expr=cron_expr,
                 rrule_json=rrule_json,
+                one_time_due_date=one_time_due_date if one_time_due_date else None,
                 is_active=True
             )
             logger.info(f"Created chore {chore.id}: {chore.name}, is_undesirable={chore.is_undesirable}")
@@ -610,6 +655,7 @@ def admin_chore_update(request, chore_id):
         every_n_start_date = request.POST.get('every_n_start_date')
         cron_expr = request.POST.get('cron_expr', '').strip()
         rrule_json_str = request.POST.get('rrule_json', '').strip()
+        one_time_due_date = request.POST.get('one_time_due_date', '').strip()
 
         # Dependency fields
         depends_on_id = request.POST.get('depends_on')
@@ -652,6 +698,7 @@ def admin_chore_update(request, chore_id):
             chore.every_n_start_date = every_n_start_date if every_n_start_date else None
             chore.cron_expr = cron_expr
             chore.rrule_json = rrule_json
+            chore.one_time_due_date = one_time_due_date if one_time_due_date else None
             chore.save()
 
             # Update dependencies
@@ -948,6 +995,7 @@ def admin_user_get(request, user_id):
             'username': user.username,
             'first_name': user.first_name,
             'can_be_assigned': user.can_be_assigned,
+            'exclude_from_auto_assignment': user.exclude_from_auto_assignment,
             'eligible_for_points': user.eligible_for_points,
             'is_staff': user.is_staff,
             'is_active': user.is_active,
@@ -972,6 +1020,7 @@ def admin_user_create(request):
         first_name = request.POST.get('first_name', '').strip()
         password = request.POST.get('password', '').strip()
         can_be_assigned = request.POST.get('can_be_assigned') == 'true'
+        exclude_from_auto_assignment = request.POST.get('exclude_from_auto_assignment') == 'true'
         eligible_for_points = request.POST.get('eligible_for_points') == 'true'
         is_staff = request.POST.get('is_staff') == 'true'
 
@@ -1001,6 +1050,7 @@ def admin_user_create(request):
                 password=password,
                 first_name=first_name,
                 can_be_assigned=can_be_assigned,
+                exclude_from_auto_assignment=exclude_from_auto_assignment,
                 eligible_for_points=eligible_for_points,
                 is_staff=is_staff,
                 is_active=True
@@ -1040,6 +1090,7 @@ def admin_user_update(request, user_id):
         first_name = request.POST.get('first_name', '').strip()
         password = request.POST.get('password', '').strip()
         can_be_assigned = request.POST.get('can_be_assigned') == 'true'
+        exclude_from_auto_assignment = request.POST.get('exclude_from_auto_assignment') == 'true'
         eligible_for_points = request.POST.get('eligible_for_points') == 'true'
         is_staff = request.POST.get('is_staff') == 'true'
 
@@ -1047,6 +1098,7 @@ def admin_user_update(request, user_id):
             # Update user
             user.first_name = first_name
             user.can_be_assigned = can_be_assigned
+            user.exclude_from_auto_assignment = exclude_from_auto_assignment
             user.eligible_for_points = eligible_for_points
             user.is_staff = is_staff
 
@@ -1256,7 +1308,7 @@ def admin_backup_upload(request):
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = {row[0] for row in cursor.fetchall()}
 
-            required_tables = {'users_user', 'chores_chore', 'chores_choreinstance', 'core_settings'}
+            required_tables = {'users', 'chores', 'chore_instances', 'settings'}
             missing_tables = required_tables - tables
 
             if missing_tables:
@@ -1707,9 +1759,11 @@ def admin_skip_chores(request):
     undo_cutoff = now - timedelta(hours=undo_limit_hours)
 
     # Get active chores (pool + assigned) that can be skipped
+    # Include all instances due today OR overdue from previous days
     active_chores = ChoreInstance.objects.filter(
-        due_at__date=today,
-        status__in=[ChoreInstance.POOL, ChoreInstance.ASSIGNED]
+        Q(due_at__date=today) | Q(due_at__lt=now),
+        status__in=[ChoreInstance.POOL, ChoreInstance.ASSIGNED],
+        chore__is_active=True
     ).select_related('chore', 'assigned_to').order_by('due_at', 'status')
 
     # Get recently skipped chores (within undo window)

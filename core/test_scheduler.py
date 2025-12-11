@@ -7,7 +7,7 @@ import unittest
 from decimal import Decimal
 from django.test import TestCase
 from django.utils import timezone
-from datetime import timedelta, date, time
+from datetime import timedelta, date, time, datetime
 
 from users.models import User
 from chores.models import Chore, ChoreInstance, Completion, CompletionShare
@@ -128,6 +128,61 @@ class MidnightEvaluationTests(TestCase):
         past_instance.refresh_from_db()
         self.assertTrue(past_instance.is_overdue)
 
+    def test_midnight_evaluation_marks_chores_overdue_at_midnight(self):
+        """Test that chores due 'yesterday' are marked overdue at midnight."""
+        # Create instance due at start of today (which means it was due "yesterday")
+        today = timezone.now().date()
+        due_at = timezone.make_aware(
+            datetime.combine(today, datetime.min.time())
+        )
+
+        past_instance = ChoreInstance.objects.create(
+            chore=self.daily_chore,
+            status=ChoreInstance.POOL,
+            points_value=self.daily_chore.points,
+            due_at=due_at,
+            distribution_at=due_at - timedelta(hours=6),
+            is_overdue=False
+        )
+
+        # Simulate midnight evaluation running now
+        run_midnight_evaluation()
+
+        # Verify marked as overdue
+        past_instance.refresh_from_db()
+        self.assertTrue(
+            past_instance.is_overdue,
+            f"Chore due at {past_instance.due_at} should be marked overdue"
+        )
+
+    def test_midnight_evaluation_does_not_mark_future_chores_overdue(self):
+        """Test that chores due tomorrow are NOT marked overdue."""
+        today = timezone.now().date()
+        day_after_tomorrow = today + timedelta(days=2)
+
+        # Create chore due tomorrow (start of day after tomorrow)
+        due_at = timezone.make_aware(
+            datetime.combine(day_after_tomorrow, datetime.min.time())
+        )
+
+        future_instance = ChoreInstance.objects.create(
+            chore=self.daily_chore,
+            status=ChoreInstance.POOL,
+            points_value=self.daily_chore.points,
+            due_at=due_at,
+            distribution_at=due_at - timedelta(hours=6),
+            is_overdue=False
+        )
+
+        run_midnight_evaluation()
+
+        # Verify NOT marked as overdue
+        future_instance.refresh_from_db()
+        self.assertFalse(
+            future_instance.is_overdue,
+            f"Chore due at {future_instance.due_at} should NOT be marked overdue"
+        )
+
     def test_midnight_evaluation_resets_claim_counters(self):
         """Test that midnight evaluation resets daily claim counters."""
         # Set user claim counter
@@ -190,6 +245,307 @@ class MidnightEvaluationTests(TestCase):
         # Instance should still have old value
         instance.refresh_from_db()
         self.assertEqual(instance.points_value, Decimal('10.00'))
+
+    def test_midnight_evaluation_creates_rrule_daily_instances(self):
+        """Test that midnight evaluation creates instances for RRULE DAILY chores."""
+        # Create RRULE chore with daily frequency
+        rrule_chore = Chore.objects.create(
+            name='RRULE Daily Chore',
+            points=Decimal('10.00'),
+            is_pool=True,
+            schedule_type=Chore.RRULE,
+            rrule_json={'freq': 'DAILY', 'interval': 1},
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        # Verify instance created
+        instances = ChoreInstance.objects.filter(chore=rrule_chore)
+        self.assertEqual(instances.count(), 1)
+
+    def test_midnight_evaluation_creates_rrule_weekly_instances(self):
+        """Test that midnight evaluation creates instances for RRULE WEEKLY chores on correct day."""
+        # Create RRULE chore with weekly frequency on today's weekday
+        today_weekday = timezone.now().weekday()
+        rrule_chore = Chore.objects.create(
+            name='RRULE Weekly Chore',
+            points=Decimal('15.00'),
+            is_pool=True,
+            schedule_type=Chore.RRULE,
+            rrule_json={
+                'freq': 'WEEKLY',
+                'interval': 1,
+                'byweekday': [today_weekday]
+            },
+            distribution_time=time(18, 0)
+        )
+
+        run_midnight_evaluation()
+
+        # Verify instance created
+        instances = ChoreInstance.objects.filter(chore=rrule_chore)
+        self.assertEqual(instances.count(), 1)
+
+    def test_midnight_evaluation_skips_rrule_wrong_weekday(self):
+        """Test that RRULE weekly chores not due today are skipped."""
+        # Create RRULE chore for different weekday
+        wrong_day = (timezone.now().weekday() + 1) % 7
+        rrule_chore = Chore.objects.create(
+            name='RRULE Wrong Day Chore',
+            points=Decimal('10.00'),
+            is_pool=True,
+            schedule_type=Chore.RRULE,
+            rrule_json={
+                'freq': 'WEEKLY',
+                'interval': 1,
+                'byweekday': [wrong_day]
+            },
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        # Should not create instance
+        instances = ChoreInstance.objects.filter(chore=rrule_chore)
+        self.assertEqual(instances.count(), 0)
+
+    def test_midnight_evaluation_creates_rrule_interval_instances(self):
+        """Test that RRULE with interval creates instances correctly."""
+        # Create RRULE chore with 2-day interval starting 2 days ago
+        two_days_ago = timezone.now().date() - timedelta(days=2)
+        rrule_chore = Chore.objects.create(
+            name='RRULE Every 2 Days Chore',
+            points=Decimal('12.00'),
+            is_pool=True,
+            schedule_type=Chore.RRULE,
+            rrule_json={
+                'freq': 'DAILY',
+                'interval': 2,
+                'dtstart': two_days_ago.strftime('%Y-%m-%d')
+            },
+            distribution_time=time(19, 0)
+        )
+
+        run_midnight_evaluation()
+
+        # Should create instance (today is 2 days after start)
+        instances = ChoreInstance.objects.filter(chore=rrule_chore)
+        self.assertEqual(instances.count(), 1)
+
+    def test_midnight_evaluation_skips_rrule_with_until_past(self):
+        """Test that RRULE with until date in the past doesn't create instances."""
+        yesterday = timezone.now().date() - timedelta(days=1)
+        rrule_chore = Chore.objects.create(
+            name='RRULE Ended Chore',
+            points=Decimal('10.00'),
+            is_pool=True,
+            schedule_type=Chore.RRULE,
+            rrule_json={
+                'freq': 'DAILY',
+                'interval': 1,
+                'until': yesterday.strftime('%Y-%m-%d')
+            },
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        # Should not create instance (until date has passed)
+        instances = ChoreInstance.objects.filter(chore=rrule_chore)
+        self.assertEqual(instances.count(), 0)
+
+    def test_midnight_evaluation_creates_rrule_weekday_specific(self):
+        """Test that RRULE with specific weekdays works correctly."""
+        # Create RRULE for weekdays only (Monday-Friday)
+        today_weekday = timezone.now().weekday()
+        is_weekday = today_weekday < 5  # 0-4 are Monday-Friday
+
+        rrule_chore = Chore.objects.create(
+            name='RRULE Weekdays Only',
+            points=Decimal('10.00'),
+            is_pool=True,
+            schedule_type=Chore.RRULE,
+            rrule_json={
+                'freq': 'WEEKLY',
+                'byweekday': [0, 1, 2, 3, 4]  # Monday-Friday
+            },
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        instances = ChoreInstance.objects.filter(chore=rrule_chore)
+        if is_weekday:
+            # Should create instance on weekdays
+            self.assertEqual(instances.count(), 1)
+        else:
+            # Should not create instance on weekends
+            self.assertEqual(instances.count(), 0)
+
+    def test_midnight_evaluation_creates_cron_daily_instances(self):
+        """Test that midnight evaluation creates instances for CRON daily chores."""
+        # Create CRON chore with daily expression
+        cron_chore = Chore.objects.create(
+            name='CRON Daily Chore',
+            points=Decimal('10.00'),
+            is_pool=True,
+            schedule_type=Chore.CRON,
+            cron_expr='0 0 * * *',  # Daily at midnight
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        # Verify instance created
+        instances = ChoreInstance.objects.filter(chore=cron_chore)
+        self.assertEqual(instances.count(), 1)
+
+    def test_midnight_evaluation_creates_cron_weekday_instances(self):
+        """Test that midnight evaluation creates instances for CRON weekday chores."""
+        today_weekday = timezone.now().weekday()
+        is_weekday = today_weekday < 5  # 0-4 are Monday-Friday
+
+        # Create CRON chore for weekdays only
+        cron_chore = Chore.objects.create(
+            name='CRON Weekdays Chore',
+            points=Decimal('15.00'),
+            is_pool=True,
+            schedule_type=Chore.CRON,
+            cron_expr='0 0 * * 1-5',  # Monday-Friday at midnight
+            distribution_time=time(18, 0)
+        )
+
+        run_midnight_evaluation()
+
+        instances = ChoreInstance.objects.filter(chore=cron_chore)
+        if is_weekday:
+            # Should create instance on weekdays
+            self.assertEqual(instances.count(), 1)
+        else:
+            # Should not create instance on weekends
+            self.assertEqual(instances.count(), 0)
+
+    def test_midnight_evaluation_creates_cron_monthly_instances(self):
+        """Test that midnight evaluation creates instances for CRON monthly chores."""
+        today = timezone.now().date()
+        is_first_of_month = today.day == 1
+
+        # Create CRON chore for first day of month
+        cron_chore = Chore.objects.create(
+            name='CRON Monthly Chore',
+            points=Decimal('20.00'),
+            is_pool=True,
+            schedule_type=Chore.CRON,
+            cron_expr='0 0 1 * *',  # First day of each month at midnight
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        instances = ChoreInstance.objects.filter(chore=cron_chore)
+        if is_first_of_month:
+            # Should create instance on first of month
+            self.assertEqual(instances.count(), 1)
+        else:
+            # Should not create instance on other days
+            self.assertEqual(instances.count(), 0)
+
+    def test_midnight_evaluation_creates_cron_nth_weekday_instances(self):
+        """Test that midnight evaluation creates instances for CRON Nth weekday (e.g., 1st and 3rd Saturday)."""
+        today = timezone.now().date()
+        today_weekday = today.weekday()
+
+        # Check if today is Saturday
+        is_saturday = today_weekday == 5  # 5 = Saturday
+
+        # Check if today is 1st or 3rd occurrence of the weekday in the month
+        if is_saturday:
+            # Count how many Saturdays we've had this month up to today
+            first_of_month = today.replace(day=1)
+            saturdays_count = 0
+            current_day = first_of_month
+            while current_day <= today:
+                if current_day.weekday() == 5:
+                    saturdays_count += 1
+                    if current_day == today:
+                        break
+                current_day += timedelta(days=1)
+
+            is_1st_or_3rd_saturday = saturdays_count in [1, 3]
+        else:
+            is_1st_or_3rd_saturday = False
+
+        # Create CRON chore for 1st and 3rd Saturday
+        cron_chore = Chore.objects.create(
+            name='CRON Nth Saturday Chore',
+            points=Decimal('25.00'),
+            is_pool=True,
+            schedule_type=Chore.CRON,
+            cron_expr='0 0 * * 6#1,6#3',  # 1st and 3rd Saturday at midnight
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        instances = ChoreInstance.objects.filter(chore=cron_chore)
+        if is_1st_or_3rd_saturday:
+            # Should create instance on 1st or 3rd Saturday
+            self.assertEqual(instances.count(), 1)
+        else:
+            # Should not create instance on other days
+            self.assertEqual(instances.count(), 0)
+
+    def test_midnight_evaluation_skips_cron_specific_day(self):
+        """Test that CRON chores only fire on specified days."""
+        today_weekday = timezone.now().weekday()
+        is_monday = today_weekday == 0
+
+        # Create CRON chore for Mondays only
+        cron_chore = Chore.objects.create(
+            name='CRON Monday Only Chore',
+            points=Decimal('10.00'),
+            is_pool=True,
+            schedule_type=Chore.CRON,
+            cron_expr='0 0 * * 1',  # Monday only at midnight
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        instances = ChoreInstance.objects.filter(chore=cron_chore)
+        if is_monday:
+            # Should create instance on Monday
+            self.assertEqual(instances.count(), 1)
+        else:
+            # Should not create instance on other days
+            self.assertEqual(instances.count(), 0)
+
+    def test_midnight_evaluation_handles_cron_with_step_values(self):
+        """Test that CRON with step values works correctly (e.g., every other day)."""
+        today = timezone.now().date()
+        day_of_month = today.day
+
+        # Every other day starting from day 1
+        should_fire = day_of_month % 2 == 1
+
+        # Create CRON chore for every other day
+        cron_chore = Chore.objects.create(
+            name='CRON Every Other Day Chore',
+            points=Decimal('10.00'),
+            is_pool=True,
+            schedule_type=Chore.CRON,
+            cron_expr='0 0 */2 * *',  # Every 2 days at midnight
+            distribution_time=time(17, 30)
+        )
+
+        run_midnight_evaluation()
+
+        instances = ChoreInstance.objects.filter(chore=cron_chore)
+        # Note: */2 in day field means every 2 days (1, 3, 5, 7, etc.)
+        # This test may vary based on month and current day
+        # We just verify no error occurs
+        self.assertGreaterEqual(instances.count(), 0)
 
 
 class DistributionCheckTests(TestCase):

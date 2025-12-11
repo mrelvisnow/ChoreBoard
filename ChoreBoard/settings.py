@@ -56,6 +56,7 @@ _MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",  # Add WhiteNoise for static files
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",  # CSRF protection for forms
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
@@ -136,6 +137,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
@@ -155,6 +159,31 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ],
 }
+
+# CSRF Configuration
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF cookie
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Build CSRF trusted origins from ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# Add production origins if not in DEBUG mode
+if not DEBUG:
+    # Add HTTPS origins for all allowed hosts
+    for host in ALLOWED_HOSTS:
+        if host not in ['*', 'localhost', '127.0.0.1']:
+            CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
+            CSRF_TRUSTED_ORIGINS.append(f'http://{host}')
+
+    # Set secure cookies for production
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+
+    # Trust X-Forwarded-Proto header from Traefik reverse proxy
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # APScheduler Configuration
 APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"

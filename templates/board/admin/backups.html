@@ -285,6 +285,9 @@
 
             const response = await fetch('{% url "board:admin_backup_create" %}', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -334,6 +337,9 @@
 
             const response = await fetch('{% url "board:admin_backup_upload" %}', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 
@@ -375,6 +381,9 @@
 
             const response = await fetch('{% url "board:admin_backup_restore" %}', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
 

@@ -170,3 +170,86 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+// Triple-tap easter egg detection for Piano Tiles
+(function() {
+    const TRIPLE_TAP_TIMEOUT = 600; // ms between taps
+
+    function createTapDetector(element, targetUrl, debugName) {
+        let tapCount = 0;
+        let lastTapTime = 0;
+
+        element.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent event bubbling
+            const now = Date.now();
+
+            if (now - lastTapTime < TRIPLE_TAP_TIMEOUT) {
+                tapCount++;
+                console.log(debugName + ' tap count:', tapCount);
+            } else {
+                tapCount = 1;
+                console.log(debugName + ' tap count reset to 1');
+            }
+
+            lastTapTime = now;
+
+            if (tapCount === 3) {
+                // Easter egg activated!
+                console.log(debugName + ' Easter egg activated! Navigating to:', targetUrl);
+                window.location.href = targetUrl;
+            }
+        });
+
+        // Add visual feedback
+        element.style.cursor = 'pointer';
+        element.title = 'Triple-tap for a surprise!';
+        console.log('Tap detector attached to:', debugName);
+    }
+
+    // Initialize after DOM loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEasterEggs);
+    } else {
+        initEasterEggs();
+    }
+
+    function initEasterEggs() {
+        console.log('Initializing Piano Tiles easter eggs...');
+
+        // Method 1: Target the specific h1 with arcade leaderboard text
+        const allH1s = document.querySelectorAll('h1');
+        let arcadeH1 = null;
+
+        allH1s.forEach(h1 => {
+            if (h1.textContent.includes('🎮') && h1.textContent.includes('Arcade')) {
+                arcadeH1 = h1;
+                console.log('Found arcade h1:', h1.textContent);
+            }
+        });
+
+        if (arcadeH1) {
+            createTapDetector(arcadeH1, '/piano/play/', 'Arcade H1');
+        } else {
+            console.warn('Arcade h1 with 🎮 not found');
+        }
+
+        // Add trophy icon for piano leaderboard access
+        if (arcadeH1) {
+            const trophySpan = document.createElement('span');
+            trophySpan.id = 'piano-leaderboard-trigger';
+            trophySpan.textContent = ' 🏆';
+            trophySpan.className = 'inline-block text-4xl ml-2 transition-transform hover:scale-110';
+            trophySpan.style.cursor = 'pointer';
+            trophySpan.style.userSelect = 'none';
+
+            arcadeH1.appendChild(trophySpan);
+            createTapDetector(trophySpan, '/piano/leaderboard/', 'Trophy Icon');
+            console.log('Trophy icon added to h1');
+        }
+    }
+})();
+</script>
+{% endblock %}

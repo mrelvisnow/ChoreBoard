@@ -223,6 +223,9 @@ document.getElementById('adjust-points-form').addEventListener('submit', async f
     try {
         const response = await fetch('{% url "board:admin_adjust_points_submit" %}', {
             method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
             body: formData
         });
 

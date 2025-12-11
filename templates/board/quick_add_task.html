@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Quick Add Task - ChoreBoard{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-white">Quick Add Task</h1>
+        <p class="text-gray-400 mt-1">Create a one-time task that won't recur</p>
+    </div>
+
+    <form id="quick-add-form" class="bg-dark-surface rounded-lg p-8 border border-dark-border space-y-6">
+        {% csrf_token %}
+
+        <!-- Task Name -->
+        <div>
+            <label for="task-name" class="block text-gray-300 mb-2 font-medium">
+                Task Name <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="task-name" name="name" required
+                   placeholder="e.g., Paint the garage"
+                   class="w-full bg-dark-card text-gray-100 border border-dark-border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+        </div>
+
+        <!-- Description -->
+        <div>
+            <label for="task-description" class="block text-gray-300 mb-2 font-medium">
+                Description
+            </label>
+            <textarea id="task-description" name="description" rows="3"
+                      placeholder="Optional details about this task..."
+                      class="w-full bg-dark-card text-gray-100 border border-dark-border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"></textarea>
+        </div>
+
+        <!-- Points -->
+        <div>
+            <label for="task-points" class="block text-gray-300 mb-2 font-medium">
+                {{ POINTS_LABEL|title }}
+            </label>
+            {% if user.is_staff or user.is_superuser %}
+            <input type="number" id="task-points" name="points" value="10" min="0" max="999.99" step="0.01"
+                   class="w-full bg-dark-card text-gray-100 border border-dark-border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+            {% else %}
+            <div class="w-full bg-dark-card/50 text-gray-400 border border-dark-border rounded-lg px-4 py-3">
+                0 (Admin required for points)
+            </div>
+            <p class="text-yellow-500 text-xs mt-1">Only administrators can create tasks with points</p>
+            {% endif %}
+        </div>
+
+        <!-- Difficulty (Checkbox) -->
+        <div>
+            <label class="flex items-center p-3 bg-dark-card border border-dark-border rounded-lg cursor-pointer hover:border-primary-500/50 transition">
+                <input type="checkbox" id="task-is-difficult" name="is_difficult" value="true"
+                       class="w-4 h-4 text-primary-600 bg-dark-card border-gray-600 focus:ring-primary-500 rounded">
+                <div class="ml-3">
+                    <span class="text-gray-100 font-medium">Mark as difficult</span>
+                    <p class="text-gray-500 text-sm">Indicates this is a challenging task</p>
+                </div>
+            </label>
+        </div>
+
+        <!-- Due Date (Optional) -->
+        <div>
+            <label for="task-due-date" class="block text-gray-300 mb-2 font-medium">
+                Due Date (Optional)
+            </label>
+            <input type="date" id="task-due-date" name="due_date"
+                   class="w-full bg-dark-card text-gray-100 border border-dark-border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+            <p class="text-gray-500 text-sm mt-1">Leave empty if task should never become overdue</p>
+        </div>
+
+        <!-- Assignment Type -->
+        <div>
+            <label class="block text-gray-300 mb-2 font-medium">
+                Assignment
+            </label>
+            <div class="space-y-3">
+                <label class="flex items-center p-3 bg-dark-card border border-dark-border rounded-lg cursor-pointer hover:border-primary-500/50 transition">
+                    <input type="radio" name="assignment_type" value="pool" checked
+                           class="w-4 h-4 text-primary-600 bg-dark-card border-gray-600 focus:ring-primary-500">
+                    <div class="ml-3">
+                        <span class="text-gray-100 font-medium">Add to pool</span>
+                        <p class="text-gray-500 text-sm">Anyone can claim this task</p>
+                    </div>
+                </label>
+                <label class="flex items-center p-3 bg-dark-card border border-dark-border rounded-lg cursor-pointer hover:border-primary-500/50 transition">
+                    <input type="radio" name="assignment_type" value="assigned"
+                           class="w-4 h-4 text-primary-600 bg-dark-card border-gray-600 focus:ring-primary-500">
+                    <div class="ml-3">
+                        <span class="text-gray-100 font-medium">Assign to specific user</span>
+                        <p class="text-gray-500 text-sm">Pre-assign to someone</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Assigned To (conditional) -->
+        <div id="assigned-to-group" class="hidden">
+            <label for="task-assigned-to" class="block text-gray-300 mb-2 font-medium">
+                Assign To
+            </label>
+            <select id="task-assigned-to" name="assigned_to"
+                    class="w-full bg-dark-card text-gray-100 border border-dark-border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                <option value="">-- Select a person --</option>
+                {% for user in users %}
+                <option value="{{ user.id }}">{{ user.get_display_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-4 pt-4">
+            <button type="submit"
+                    class="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition">
+                Create Task
+            </button>
+            <a href="{% url 'board:main' %}"
+               class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+// Show/hide assigned-to dropdown based on assignment type
+document.querySelectorAll('input[name="assignment_type"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const assignedToGroup = document.getElementById('assigned-to-group');
+        if (this.value === 'assigned') {
+            assignedToGroup.classList.remove('hidden');
+        } else {
+            assignedToGroup.classList.add('hidden');
+        }
+    });
+});
+
+// Form submission
+document.getElementById('quick-add-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+
+    // Disable submit button to prevent double submission
+    submitButton.disabled = true;
+    submitButton.textContent = 'Creating...';
+
+    try {
+        const response = await fetch('{% url "board:quick_add_task" %}', {
+            method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            // Show success message
+            showNotification('Task created successfully!', 'success');
+
+            // Redirect to main board after a brief delay
+            setTimeout(() => {
+                window.location.href = '{% url "board:main" %}';
+            }, 1000);
+        } else {
+            // Show error message
+            showNotification(data.error || 'Error creating task', 'error');
+            submitButton.disabled = false;
+            submitButton.textContent = 'Create Task';
+        }
+    } catch (error) {
+        showNotification('Error creating task: ' + error.message, 'error');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Create Task';
+    }
+});
+
+// Simple notification function
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-semibold ${
+        type === 'success' ? 'bg-green-600' :
+        type === 'error' ? 'bg-red-600' :
+        'bg-blue-600'
+    }`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -11,22 +11,43 @@ class CoreConfig(AppConfig):
         Only start in the main process (not in migration or other commands).
         """
         import sys
+        import os
         import logging
         logger = logging.getLogger(__name__)
 
         # Configure SQLite for better concurrency
         self._configure_sqlite()
 
-        # Don't start scheduler or execute restores during migrations or other management commands
-        if 'runserver' in sys.argv or 'gunicorn' in sys.argv[0]:
+        # Don't start scheduler during migrations, tests, or specific management commands
+        skip_commands = [
+            'migrate', 'makemigrations', 'test', 'collectstatic',
+            'createsuperuser', 'changepassword', 'shell'
+        ]
+
+        should_start_scheduler = True
+
+        # Check if we're running a management command that should skip scheduler
+        if len(sys.argv) > 1:
+            command = sys.argv[1]
+            if command in skip_commands:
+                should_start_scheduler = False
+                logger.debug(f"Skipping scheduler for command: {command}")
+
+        # Also check environment variable (for explicit control)
+        if os.getenv('SKIP_SCHEDULER', '').lower() == 'true':
+            should_start_scheduler = False
+            logger.info("Scheduler disabled via SKIP_SCHEDULER environment variable")
+
+        if should_start_scheduler:
             # Execute any queued database restore
             self._execute_queued_restore()
 
             from core.scheduler import start_scheduler
             try:
                 start_scheduler()
+                logger.info("✓ Scheduler initialization completed")
             except Exception as e:
-                logger.error(f"Failed to start scheduler: {str(e)}")
+                logger.error(f"✗ Failed to start scheduler: {str(e)}")
 
     def _configure_sqlite(self):
         """Configure SQLite connections for better concurrency."""

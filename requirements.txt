@@ -9,6 +9,7 @@ django-apscheduler>=0.6.2
 # Date/Time handling
 python-dateutil>=2.8.2
 pytz>=2023.3
+croniter>=2.0.0
 
 # Static Files
 whitenoise>=6.6.0

